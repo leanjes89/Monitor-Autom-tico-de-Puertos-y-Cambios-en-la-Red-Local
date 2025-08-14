@@ -1,4 +1,4 @@
-# Monitor-Autom-tico-de-Puertos-y-Cambios-en-la-Red-Local
+Monitor Automatico de Puertos y Cambios en la RedLocal
 
 Este proyecto consiste en un script en Bash que escanea automáticamente la red local, detecta cambios en puertos abiertos y servicios, y envía alertas por correo electrónico usando Gmail SMTP seguro. Además, muestra notificaciones de escritorio cuando se detectan cambios.
 

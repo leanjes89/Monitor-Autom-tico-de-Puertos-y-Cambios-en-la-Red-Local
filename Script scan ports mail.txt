@@ -1,0 +1,54 @@
+Script: scan_ports_mail.sh
+#!/bin/bash
+
+# ---------------- CONFIGURACIÓN ----------------
+EMAIL="mail.com"
+OUTPUT_DIR="$HOME/scan_reports"
+mkdir -p "$OUTPUT_DIR"
+
+# Detectar IP y rango de red de wlo1
+IP=$(ip -4 addr show wlo1 | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+if [ -z "$IP" ]; then
+    echo "No se pudo detectar la IP en wlo1."
+    exit 1
+fi
+RANGE=$(echo "$IP" | awk -F. '{print $1"."$2"."$3".0/24"}')
+
+# Fecha y hora
+DATE=$(date +"%Y-%m-%d_%H-%M")
+OUTPUT_FILE="$OUTPUT_DIR/scan_$DATE.txt"
+DIFF_FILE="$OUTPUT_DIR/diff_$DATE.txt"
+
+echo " Escaneando rango: $RANGE ..."
+
+# Escaneo rápido de puertos comunes y servicios
+nmap -F -A -T4 "$RANGE" -oN "$OUTPUT_FILE" > /dev/null
+
+# Generar resumen: host + puertos abiertos
+SUMMARY="$OUTPUT_DIR/summary_$DATE.txt"
+grep -E "Nmap scan report|open" "$OUTPUT_FILE" > "$SUMMARY"
+
+# Comparar con último escaneo
+if [ -f "$OUTPUT_DIR/archivo.txt" ]; then
+    diff "$OUTPUT_DIR/archivo.txt" "$OUTPUT_FILE" > "$DIFF_FILE"
+    
+    if [ -s "$DIFF_FILE" ]; then
+        echo " Cambios detectados en la red. Enviando correo..."
+        # Crear correo con asunto y cuerpo
+        {
+            echo -e "Subject:  Cambios detectados en la red $DATE\n"
+            echo "Se detectaron cambios en puertos/hosts:"
+            echo
+            cat "$DIFF_FILE"
+        } | msmtp "$EMAIL"
+
+        # Notificación de escritorio
+        notify-send "Scan Ports" "Cambios detectados en la red. Revisa tu correo."
+    else
+        rm "$DIFF_FILE"
+        echo "No hay cambios detectados."
+    fi
+fi
+
+# Guardar este escaneo como último
+cp "$OUTPUT_FILE" "$OUTPUT_DIR/archivo.txt"
